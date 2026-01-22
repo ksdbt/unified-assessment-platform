@@ -50,6 +50,7 @@ const CreateAssessment = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewData, setPreviewData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const questionTypes = [
@@ -428,7 +429,10 @@ const CreateAssessment = () => {
               <Space>
                 <Button
                   icon={<EyeOutlined />}
-                  onClick={() => setPreviewVisible(true)}
+                  onClick={() => {
+                    setPreviewData(values);
+                    setPreviewVisible(true);
+                  }}
                 >
                   Preview
                 </Button>
@@ -465,22 +469,22 @@ const CreateAssessment = () => {
       >
         <div className="space-y-4">
           <div>
-            <h2 className="text-xl font-bold">{values?.title}</h2>
-            <p className="text-gray-600">{values?.description}</p>
+            <h2 className="text-xl font-bold">{previewData?.title}</h2>
+            <p className="text-gray-600">{previewData?.description}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>Subject: {values?.subject}</div>
-            <div>Type: {values?.type}</div>
-            <div>Duration: {values?.duration} minutes</div>
-            <div>Passing Score: {values?.passingScore}%</div>
+            <div>Subject: {previewData?.subject}</div>
+            <div>Type: {previewData?.type}</div>
+            <div>Duration: {previewData?.duration} minutes</div>
+            <div>Passing Score: {previewData?.passingScore}%</div>
           </div>
 
           <Divider />
 
           <div>
-            <h3 className="font-bold mb-4">Questions ({values?.questions?.length})</h3>
-            {values?.questions?.map((question, index) => (
+            <h3 className="font-bold mb-4">Questions ({previewData?.questions?.length})</h3>
+            {previewData?.questions?.map((question, index) => (
               <Card key={index} size="small" className="mb-3">
                 <div className="font-medium mb-2">
                   {index + 1}. {question.question} ({question.points} points)

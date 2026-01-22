@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import { useAuth } from '../../context/AuthContext';
-import { Button, Card, Input, Select, Alert, Spin } from 'antd';
-import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
+import { Button, Card, Input, Alert, Spin } from 'antd';
+import { LockOutlined, MailOutlined } from '@ant-design/icons';
 
-const { Option } = Select;
 
 const LoginSchema = Yup.object().shape({
   email: Yup.string()
@@ -14,16 +13,12 @@ const LoginSchema = Yup.object().shape({
     .required('Email is required'),
   password: Yup.string()
     .min(6, 'Password must be at least 6 characters')
-    .required('Password is required'),
-  role: Yup.string()
-    .oneOf(['student', 'instructor', 'admin'], 'Invalid role')
-    .required('Role is required')
+    .required('Password is required')
 });
 
 const Login = () => {
   const { login, loading, error } = useAuth();
   const navigate = useNavigate();
-  const [demoCredentials, setDemoCredentials] = useState(false);
 
   const handleSubmit = async (values) => {
     try {
@@ -36,91 +31,55 @@ const Login = () => {
 
   const fillDemoCredentials = (role) => {
     const credentials = {
-      student: { email: 'student@example.com', password: 'password123', role: 'student' },
-      instructor: { email: 'instructor@example.com', password: 'password123', role: 'instructor' },
-      admin: { email: 'admin@example.com', password: 'password123', role: 'admin' }
+      student: { email: 'student@example.com', password: 'password123' },
+      instructor: { email: 'instructor@example.com', password: 'password123' },
+      admin: { email: 'admin@example.com', password: 'password123' }
     };
     return credentials[role];
   };
 
-  const getRoleBasedRedirect = (role) => {
-    switch (role) {
-      case 'student':
-        return '/student-dashboard';
-      case 'instructor':
-        return '/instructor-dashboard';
-      case 'admin':
-        return '/admin-dashboard';
-      default:
-        return '/login';
-    }
-  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 px-4">
-      <div className="max-w-md w-full">
-        <div className="text-center mb-8">
-          <div className="bg-blue-600 text-white p-4 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-            <span className="text-2xl font-bold">UAP</span>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center px-4 py-8 sm:py-12">
+      <div className="w-full max-w-md sm:max-w-lg">
+        {/* Header Section */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl shadow-2xl mb-8 transform hover:scale-105 transition-transform duration-300">
+            <span className="text-3xl font-bold text-white tracking-wide">UAP</span>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          <h1 className="text-4xl font-bold text-white dark:text-gray-100 mb-4 tracking-tight leading-tight">
             Welcome Back
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Sign in to your Unified Assessment Platform account
+          <p className="text-xl text-white/90 dark:text-gray-300 font-medium leading-relaxed">
+            Sign in to your Unified Assessment Platform
           </p>
         </div>
 
-        <Card className="shadow-xl">
+        {/* Login Card */}
+        <Card
+          className="shadow-2xl border-0 backdrop-blur-sm bg-white/95 dark:bg-gray-800/95"
+          bodyStyle={{
+            padding: '3rem 2.5rem',
+            background: 'transparent'
+          }}
+          style={{
+            borderRadius: '1.5rem',
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05)'
+          }}
+        >
           <Formik
             initialValues={{
               email: '',
-              password: '',
-              role: ''
+              password: ''
             }}
             validationSchema={LoginSchema}
             onSubmit={handleSubmit}
           >
-            {({ values, setValues }) => (
-              <Form className="space-y-6">
-                {/* Demo Credentials Section */}
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                  <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-3">
-                    Demo Credentials
-                  </h3>
-                  <div className="grid grid-cols-1 gap-2">
-                    <Button
-                      type="link"
-                      size="small"
-                      className="text-left p-0 h-auto"
-                      onClick={() => setValues(fillDemoCredentials('student'))}
-                    >
-                      <span className="text-blue-600 dark:text-blue-400">
-                        Student: student@example.com / password123
-                      </span>
-                    </Button>
-                    <Button
-                      type="link"
-                      size="small"
-                      className="text-left p-0 h-auto"
-                      onClick={() => setValues(fillDemoCredentials('instructor'))}
-                    >
-                      <span className="text-blue-600 dark:text-blue-400">
-                        Instructor: instructor@example.com / password123
-                      </span>
-                    </Button>
-                    <Button
-                      type="link"
-                      size="small"
-                      className="text-left p-0 h-auto"
-                      onClick={() => setValues(fillDemoCredentials('admin'))}
-                    >
-                      <span className="text-blue-600 dark:text-blue-400">
-                        Admin: admin@example.com / password123
-                      </span>
-                    </Button>
-                  </div>
-                </div>
+            {({ values }) => (
+              <Form className="space-y-10">
 
                 {/* Error Display */}
                 {error && (
@@ -129,39 +88,21 @@ const Login = () => {
                     type="error"
                     showIcon
                     closable
-                    className="mb-4"
+                    className="mb-8 animate-fade-in border-red-200 bg-red-50 shadow-sm"
+                    style={{
+                      borderColor: '#FECACA',
+                      backgroundColor: '#FEF2F2',
+                      borderRadius: '0.75rem',
+                      border: '1px solid #FECACA',
+                      boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.1)'
+                    }}
                   />
                 )}
 
-                {/* Role Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    I am a
-                  </label>
-                  <Field name="role">
-                    {({ field }) => (
-                      <Select
-                        {...field}
-                        placeholder="Select your role"
-                        className="w-full"
-                        size="large"
-                      >
-                        <Option value="student">Student</Option>
-                        <Option value="instructor">Instructor</Option>
-                        <Option value="admin">Administrator</Option>
-                      </Select>
-                    )}
-                  </Field>
-                  <ErrorMessage
-                    name="role"
-                    component="div"
-                    className="text-red-500 text-sm mt-1"
-                  />
-                </div>
 
                 {/* Email Field */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 tracking-wide uppercase">
                     Email Address
                   </label>
                   <Field name="email">
@@ -169,22 +110,48 @@ const Login = () => {
                       <Input
                         {...field}
                         type="email"
-                        placeholder="Enter your email"
-                        prefix={<MailOutlined />}
+                        placeholder="Enter your email address"
+                        prefix={<MailOutlined className="text-gray-400 mr-2" />}
                         size="large"
+                        className="transition-all duration-300 hover:shadow-md focus:shadow-lg"
+                        style={{
+                          borderRadius: '1rem',
+                          border: '2px solid #E5E7EB',
+                          backgroundColor: '#FAFAFA',
+                          fontSize: '1rem',
+                          fontWeight: '500',
+                          padding: '0.75rem 1rem',
+                          height: '3.25rem'
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#3B82F6';
+                          e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = '#E5E7EB';
+                          e.target.style.boxShadow = 'none';
+                        }}
                       />
                     )}
                   </Field>
                   <ErrorMessage
                     name="email"
                     component="div"
-                    className="text-red-500 text-sm mt-1"
-                  />
+                    className="text-red-500 text-sm mt-2 font-medium flex items-center"
+                    style={{ marginTop: '0.5rem' }}
+                  >
+                    {(msg) => (
+                      <span className="flex items-center">
+                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full mr-2"></span>
+                        {msg}
+                      </span>
+                    )}
+                  </ErrorMessage>
                 </div>
 
                 {/* Password Field */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 tracking-wide uppercase">
                     Password
                   </label>
                   <Field name="password">
@@ -192,16 +159,42 @@ const Login = () => {
                       <Input.Password
                         {...field}
                         placeholder="Enter your password"
-                        prefix={<LockOutlined />}
+                        prefix={<LockOutlined className="text-gray-400 mr-2" />}
                         size="large"
+                        className="transition-all duration-300 hover:shadow-md focus:shadow-lg"
+                        style={{
+                          borderRadius: '1rem',
+                          border: '2px solid #E5E7EB',
+                          backgroundColor: '#FAFAFA',
+                          fontSize: '1rem',
+                          fontWeight: '500',
+                          padding: '0.75rem 1rem',
+                          height: '3.25rem'
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#3B82F6';
+                          e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = '#E5E7EB';
+                          e.target.style.boxShadow = 'none';
+                        }}
                       />
                     )}
                   </Field>
                   <ErrorMessage
                     name="password"
                     component="div"
-                    className="text-red-500 text-sm mt-1"
-                  />
+                    className="text-red-500 text-sm mt-2 font-medium flex items-center"
+                    style={{ marginTop: '0.5rem' }}
+                  >
+                    {(msg) => (
+                      <span className="flex items-center">
+                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full mr-2"></span>
+                        {msg}
+                      </span>
+                    )}
+                  </ErrorMessage>
                 </div>
 
                 {/* Submit Button */}
@@ -211,21 +204,56 @@ const Login = () => {
                   size="large"
                   block
                   loading={loading}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="group relative overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
+                  style={{
+                    background: 'linear-gradient(135deg, #667EEA 0%, #764BA2 100%)',
+                    border: 'none',
+                    borderRadius: '1rem',
+                    height: '3.5rem',
+                    fontSize: '1.1rem',
+                    fontWeight: '700',
+                    letterSpacing: '0.025em',
+                    boxShadow: '0 10px 25px -5px rgba(102, 126, 234, 0.4), 0 8px 10px -6px rgba(118, 75, 162, 0.4)',
+                    backgroundSize: '200% 200%',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundPosition = 'right center';
+                    e.target.style.boxShadow = '0 15px 35px -5px rgba(102, 126, 234, 0.6), 0 12px 15px -6px rgba(118, 75, 162, 0.6)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundPosition = 'left center';
+                    e.target.style.boxShadow = '0 10px 25px -5px rgba(102, 126, 234, 0.4), 0 8px 10px -6px rgba(118, 75, 162, 0.4)';
+                  }}
                 >
-                  {loading ? 'Signing In...' : 'Sign In'}
+                  <span className="relative z-10 flex items-center justify-center">
+                    {loading ? (
+                      <>
+                        <Spin size="small" className="mr-2" />
+                        Signing In...
+                      </>
+                    ) : (
+                      <>
+                        Sign In to Your Account
+                        <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                      </>
+                    )}
+                  </span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </Button>
 
                 {/* Sign Up Link */}
-                <div className="text-center">
-                  <span className="text-gray-600 dark:text-gray-400">
-                    Don't have an account?{' '}
+                <div className="text-center pt-8 border-t border-gray-200 mt-8">
+                  <span className="text-gray-600 font-medium">
+                    New to Unified Assessment Platform?{' '}
                   </span>
                   <Link
                     to="/signup"
-                    className="text-blue-600 hover:text-blue-500 font-medium"
+                    className="text-blue-600 hover:text-blue-700 font-bold transition-all duration-300 hover:underline underline-offset-4 decoration-2 decoration-blue-300"
                   >
-                    Sign up
+                    Create an account
                   </Link>
                 </div>
               </Form>
@@ -233,9 +261,13 @@ const Login = () => {
           </Formik>
         </Card>
 
-        <div className="text-center mt-6">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Unified Assessment Platform © 2024
+        {/* Footer */}
+        <div className="text-center mt-12">
+          <p className="text-white/70 text-sm font-medium tracking-wide">
+            © 2026 Unified Assessment Platform. All rights reserved.
+          </p>
+          <p className="text-white/50 text-xs mt-2 font-medium">
+            Enterprise-grade assessment management solution
           </p>
         </div>
       </div>
