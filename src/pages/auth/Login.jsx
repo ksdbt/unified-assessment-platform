@@ -102,7 +102,7 @@ const Login = () => {
 
                 {/* Email Field */}
                 <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 tracking-wide uppercase">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3 tracking-wide uppercase">
                     Email Address
                   </label>
                   <Field name="email">
@@ -151,7 +151,7 @@ const Login = () => {
 
                 {/* Password Field */}
                 <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 tracking-wide uppercase">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3 tracking-wide uppercase">
                     Password
                   </label>
                   <Field name="password">
