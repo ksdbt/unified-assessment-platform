@@ -1,0 +1,115 @@
+const User = require('../models/User');
+const Assessment = require('../models/Assessment');
+const Submission = require('../models/Submission');
+const ActivityLog = require('../models/ActivityLog');
+const PlatformSettings = require('../models/PlatformSettings');
+
+// @route GET /api/admin/stats
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const [
+      totalUsers, activeUsers,
+      totalStudents, totalInstructors, totalAdmins,
+      totalAssessments, activeAssessments,
+      totalSubmissions, evaluatedSubmissions,
+      recentLogs
+    ] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ isActive: true }),
+      User.countDocuments({ role: 'student' }),
+      User.countDocuments({ role: 'instructor' }),
+      User.countDocuments({ role: 'admin' }),
+      Assessment.countDocuments(),
+      Assessment.countDocuments({ status: 'active' }),
+      Submission.countDocuments(),
+      Submission.countDocuments({ status: 'evaluated' }),
+      ActivityLog.find().sort({ createdAt: -1 }).limit(10)
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        users: { total: totalUsers, active: activeUsers },
+        roles: { students: totalStudents, instructors: totalInstructors, admins: totalAdmins },
+        assessments: { total: totalAssessments, active: activeAssessments },
+        submissions: { total: totalSubmissions, evaluated: evaluatedSubmissions },
+        recentActivity: recentLogs
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @route GET /api/admin/logs
+exports.getActivityLogs = async (req, res) => {
+  try {
+    const { period, action, startDate, endDate, page = 1, limit = 50 } = req.query;
+
+    let query = {};
+
+    if (action) query.action = action;
+
+    if (period) {
+      const now = new Date();
+      let start;
+      if (period === '1h') start = new Date(now - 60 * 60 * 1000);
+      else if (period === '24h') start = new Date(now - 24 * 60 * 60 * 1000);
+      else if (period === '7d') start = new Date(now - 7 * 24 * 60 * 60 * 1000);
+      else if (period === '30d') start = new Date(now - 30 * 24 * 60 * 60 * 1000);
+      if (start) query.createdAt = { $gte: start };
+    }
+
+    if (startDate && endDate) {
+      query.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) };
+    }
+
+    const total = await ActivityLog.countDocuments(query);
+    const logs = await ActivityLog.find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    res.json({ success: true, data: logs, total, page: parseInt(page) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @route GET /api/admin/settings
+exports.getSettings = async (req, res) => {
+  try {
+    let settings = await PlatformSettings.findOne();
+    if (!settings) {
+      settings = await PlatformSettings.create({});
+    }
+    res.json({ success: true, data: settings });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @route PUT /api/admin/settings
+exports.updateSettings = async (req, res) => {
+  try {
+    let settings = await PlatformSettings.findOne();
+    if (!settings) {
+      settings = await PlatformSettings.create(req.body);
+    } else {
+      settings = await PlatformSettings.findByIdAndUpdate(settings._id, req.body, { new: true });
+    }
+
+    await ActivityLog.create({
+      user: req.user.name,
+      userId: req.user._id,
+      action: 'settings_updated',
+      details: 'Platform settings updated',
+      ip: req.ip,
+      userAgent: req.headers['user-agent']
+    });
+
+    res.json({ success: true, data: settings });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

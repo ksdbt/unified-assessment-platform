@@ -1,0 +1,193 @@
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+const ActivityLog = require('../models/ActivityLog');
+
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '24h' });
+};
+
+// @route POST /api/auth/register
+exports.register = async (req, res) => {
+  try {
+    const { name, email, password, role, instituteCode } = req.body;
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: 'User already exists with this email' });
+    }
+
+    const user = await User.create({ name, email, password, role, instituteCode });
+
+    await ActivityLog.create({
+      user: user.name,
+      userId: user._id,
+      action: 'user_created',
+      details: `New ${role} registered: ${name}`,
+      ip: req.ip,
+      userAgent: req.headers['user-agent']
+    });
+
+    const token = generateToken(user._id);
+
+    res.status(201).json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        instituteCode: user.instituteCode
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @route POST /api/auth/login
+exports.login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Please provide email and password' });
+    }
+
+    const user = await User.findOne({ email }).select('+password');
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'User not found' });
+    }
+
+    const isMatch = await user.matchPassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Invalid password' });
+    }
+
+    if (!user.isActive) {
+      return res.status(401).json({ success: false, message: 'Account is suspended' });
+    }
+
+    await ActivityLog.create({
+      user: user.name,
+      userId: user._id,
+      action: 'user_login',
+      details: `${user.role} logged in: ${user.name}`,
+      ip: req.ip,
+      userAgent: req.headers['user-agent']
+    });
+
+    const token = generateToken(user._id);
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        instituteCode: user.instituteCode,
+        profile: user.profile
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @route GET /api/auth/me
+exports.getMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        instituteCode: user.instituteCode,
+        profile: user.profile
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @route PUT /api/auth/profile
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, phone, address, department, specialization, experience } = req.body;
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        name,
+        'profile.phone': phone,
+        'profile.address': address,
+        'profile.department': department,
+        'profile.specialization': specialization,
+        'profile.experience': experience
+      },
+      { new: true, runValidators: true }
+    );
+
+    await ActivityLog.create({
+      user: user.name,
+      userId: user._id,
+      action: 'user_updated',
+      details: `Profile updated: ${user.name}`,
+      ip: req.ip,
+      userAgent: req.headers['user-agent']
+    });
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        instituteCode: user.instituteCode,
+        profile: user.profile
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @route PUT /api/auth/password
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await User.findById(req.user._id).select('+password');
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    await ActivityLog.create({
+      user: user.name,
+      userId: user._id,
+      action: 'password_changed',
+      details: `Password changed: ${user.name}`,
+      ip: req.ip,
+      userAgent: req.headers['user-agent']
+    });
+
+    res.json({ success: true, message: 'Password changed successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

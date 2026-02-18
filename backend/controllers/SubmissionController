@@ -1,0 +1,202 @@
+const Submission = require('../models/Submission');
+const Assessment = require('../models/Assessment');
+const ActivityLog = require('../models/ActivityLog');
+
+// @route POST /api/submissions
+exports.submitAssessment = async (req, res) => {
+  try {
+    const { assessmentId, answers, timeTaken } = req.body;
+
+    const assessment = await Assessment.findById(assessmentId);
+    if (!assessment) {
+      return res.status(404).json({ success: false, message: 'Assessment not found' });
+    }
+
+    // Auto-evaluate MCQ answers
+    let totalScore = 0;
+    let maxScore = 0;
+
+    const evaluatedAnswers = assessment.questions.map(question => {
+      maxScore += question.points;
+      const userAnswer = answers[question._id] || answers[question._id?.toString()] || '';
+      let isCorrect = null;
+      let points = 0;
+
+      if (question.type === 'mcq') {
+        isCorrect = userAnswer === question.correctAnswer;
+        points = isCorrect ? question.points : 0;
+        totalScore += points;
+      } else if (question.type === 'multiple_choice') {
+        const sortedUser = Array.isArray(userAnswer) ? [...userAnswer].sort() : [];
+        const sortedCorrect = [...(question.correctAnswers || [])].sort();
+        isCorrect = JSON.stringify(sortedUser) === JSON.stringify(sortedCorrect);
+        points = isCorrect ? question.points : 0;
+        totalScore += points;
+      }
+      // Written answers need manual grading - isCorrect stays null
+
+      return {
+        questionId: question._id,
+        type: question.type,
+        answer: userAnswer,
+        isCorrect,
+        points,
+        feedback: isCorrect !== null ? (isCorrect ? 'Correct!' : 'Incorrect') : null
+      };
+    });
+
+    // Check if all written - status is pending
+    const hasWritten = assessment.questions.some(q =>
+      q.type === 'short_answer' || q.type === 'long_answer'
+    );
+
+    const submission = await Submission.create({
+      assessmentId,
+      studentId: req.user._id,
+      studentName: req.user.name,
+      status: hasWritten ? 'pending' : 'evaluated',
+      totalScore: hasWritten ? null : totalScore,
+      maxScore,
+      percentage: hasWritten ? null : Math.round((totalScore / maxScore) * 100),
+      timeTaken,
+      answers: evaluatedAnswers,
+      submittedAt: new Date()
+    });
+
+    // If fully auto-evaluated, mark as evaluated
+    if (!hasWritten) {
+      submission.status = 'evaluated';
+      submission.evaluatedAt = new Date();
+      await submission.save();
+    }
+
+    await ActivityLog.create({
+      user: req.user.name,
+      userId: req.user._id,
+      action: 'assessment_submitted',
+      details: `Submitted assessment: ${assessment.title}`,
+      ip: req.ip,
+      userAgent: req.headers['user-agent']
+    });
+
+    res.status(201).json({ success: true, data: submission });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @route GET /api/submissions/student - student's own submissions
+exports.getStudentSubmissions = async (req, res) => {
+  try {
+    const submissions = await Submission.find({ studentId: req.user._id })
+      .populate('assessmentId', 'title subject duration totalQuestions')
+      .sort({ submittedAt: -1 });
+    res.json({ success: true, data: submissions });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @route GET /api/submissions/pending - instructor's pending submissions
+exports.getPendingSubmissions = async (req, res) => {
+  try {
+    const instructorAssessments = await Assessment.find({ instructorId: req.user._id });
+    const assessmentIds = instructorAssessments.map(a => a._id);
+
+    const submissions = await Submission.find({
+      assessmentId: { $in: assessmentIds },
+      status: 'pending'
+    }).populate('assessmentId', 'title subject').sort({ submittedAt: -1 });
+
+    res.json({ success: true, data: submissions });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @route GET /api/submissions/assessment/:id
+exports.getSubmissionsByAssessment = async (req, res) => {
+  try {
+    const submissions = await Submission.find({ assessmentId: req.params.id })
+      .populate('studentId', 'name email avatar');
+    res.json({ success: true, data: submissions });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @route GET /api/submissions/all - admin only
+exports.getAllSubmissions = async (req, res) => {
+  try {
+    const submissions = await Submission.find()
+      .populate('assessmentId', 'title subject')
+      .populate('studentId', 'name email')
+      .sort({ submittedAt: -1 });
+    res.json({ success: true, data: submissions });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @route PUT /api/submissions/:id/evaluate
+exports.evaluateSubmission = async (req, res) => {
+  try {
+    const { manualAnswers, feedback } = req.body;
+    const submission = await Submission.findById(req.params.id);
+
+    if (!submission) {
+      return res.status(404).json({ success: false, message: 'Submission not found' });
+    }
+
+    // Calculate auto-graded score
+    let autoScore = submission.answers
+      .filter(a => a.isCorrect !== null)
+      .reduce((acc, a) => acc + (a.isCorrect ? a.points : 0), 0);
+
+    // Apply manual grades
+    let manualScore = 0;
+    const updatedAnswers = submission.answers.map((answer, idx) => {
+      if (answer.isCorrect === null && manualAnswers) {
+        const manual = manualAnswers[idx] || manualAnswers.find((_, i) => {
+          const nullAnswers = submission.answers.filter(a => a.isCorrect === null);
+          return nullAnswers[i] && nullAnswers[i].questionId?.toString() === answer.questionId?.toString();
+        });
+        if (manual) {
+          manualScore += manual.points || 0;
+          return { ...answer.toObject(), points: manual.points || 0, feedback: manual.feedback || '' };
+        }
+      }
+      return answer;
+    });
+
+    const totalScore = autoScore + manualScore;
+    const percentage = Math.round((totalScore / submission.maxScore) * 100);
+
+    const updated = await Submission.findByIdAndUpdate(
+      req.params.id,
+      {
+        status: 'evaluated',
+        totalScore,
+        percentage,
+        instructorFeedback: feedback,
+        evaluatedBy: req.user._id,
+        evaluatedAt: new Date(),
+        answers: updatedAnswers
+      },
+      { new: true }
+    );
+
+    await ActivityLog.create({
+      user: req.user.name,
+      userId: req.user._id,
+      action: 'assessment_evaluated',
+      details: `Evaluated submission by ${submission.studentName}`,
+      ip: req.ip,
+      userAgent: req.headers['user-agent']
+    });
+
+    res.json({ success: true, data: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
