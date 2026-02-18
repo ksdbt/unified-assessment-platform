@@ -156,7 +156,7 @@ If using Docker MongoDB:
 
 ------------------------------------------------------------------------
 
-# Important Note From Side regraing .env files
+# Important Note From MySide regarding .env files
 
 ⚠ This is an internship development project.
 
