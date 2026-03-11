@@ -1,0 +1,11 @@
+{
+    "ignore": [
+        "*.log",
+        "logs/*",
+        "scripts/*",
+        "tests/*",
+        "data/*",
+        "db/*"
+    ],
+    "delay": "1000"
+}

@@ -1,0 +1,6 @@
+Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+Expected: [32m200[39m
+Received: [31m401[39m
+    at Object.<anonymous> (C:\Users\KEERTHIKA\Downloads\unified-assessment-platform-release_01\unified-assessment-platform-release_01\backend\tests\auth.test.js:42:32)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)

@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+dist/
+build/
+.next/
+out/
+.vercel
+
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+sim_log.txt
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Project Specific Exclusions
+WebWeave-master/
+playwright-report/
+test-results/
+errs.txt
+build_output.txt
+e2e_results.json
+test_out.txt
+test_out_utf8.txt
+*.resolved
+verify_persistence.js
+verify_settings.js
+test_ai.js
+test_clean.js
+scripts/
